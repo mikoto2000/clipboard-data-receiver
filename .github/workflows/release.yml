@@ -1,0 +1,27 @@
+name: release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    env:
+      GOARCH: "amd64"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.1'
+    - name: Build
+      run: |
+        GOOS=windows GOARCH=${{env.GOARCH}} go build -ldflags="-s -w" -trimpath -o build/clipboard-data-receiver.windows-${{env.GOARCH}}.exe ./main.go
+        GOOS=linux GOARCH=${{env.GOARCH}} go build -ldflags="-s -w" -trimpath -o build/clipboard-data-receiver.linux-${{env.GOARCH}} ./main.go
+        GOOS=darwin GOARCH=${{env.GOARCH}} go build -ldflags="-s -w" -trimpath -o build/clipboard-data-receiver.darwin-${{env.GOARCH}} ./main.go
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: build/*
+        allowUpdates: true
+        draft: true
