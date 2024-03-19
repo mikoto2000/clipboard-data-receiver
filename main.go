@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -16,6 +18,13 @@ const RECEIVE_BUFFER_SIZE = 1024
 
 const FLAG_NAME_ADDRESS = "address"
 const FLAG_NAME_PORT = "port"
+const FLAG_NAME_LICENSE = "license"
+
+//go:embed LICENSE
+var license string
+
+//go:embed NOTICE
+var notice string
 
 func main() {
 
@@ -39,8 +48,21 @@ func main() {
 				Value: DEFAULT_ADDRESS,
 				Usage: "listen address.",
 			},
+			&cli.BoolFlag{
+				Name:               FLAG_NAME_LICENSE,
+				Value:              false,
+				DisableDefaultText: true,
+				Usage:              "show licensesa.",
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
+			if cCtx.Bool(FLAG_NAME_LICENSE) {
+				fmt.Println(license)
+				fmt.Println()
+				fmt.Println(notice)
+				return nil
+			}
+
 			startListen(cCtx.String(FLAG_NAME_ADDRESS), strconv.Itoa(cCtx.Int(FLAG_NAME_PORT)))
 			return nil
 		},
