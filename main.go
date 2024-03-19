@@ -87,7 +87,6 @@ func startListen(address, port string) {
 	listener, err := net.Listen("tcp", address+":"+port)
 	if err != nil {
 		panic(err)
-		return
 	}
 
 	// 接続を待ち受け、クライアントからの接続があったら
@@ -96,7 +95,6 @@ func startListen(address, port string) {
 		conn, err := listener.Accept()
 		if err != nil {
 			panic(err)
-			continue
 		}
 
 		// 接続時処理を開始
@@ -122,7 +120,6 @@ func handleConnection(conn net.Conn) {
 		}
 		if err != nil {
 			panic(err)
-			return
 		}
 
 		receivedData.Write(buf[0:readSize])
