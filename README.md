@@ -43,6 +43,8 @@ echo "YANK_TEXT" | nc -q 0 localhost 8733
 
 # Install:
 
+[binary download from Release](https://github.com/mikoto2000/clipboard-data-receiver/releases) or `go install` command.
+
 ```sh
 go install github.com/mikoto2000/clipboard-data-receiver@latest
 ```
