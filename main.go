@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/urfave/cli/v2"
@@ -28,7 +29,11 @@ var notice string
 
 func main() {
 
+	// 事前条件チェック
 	checkPrecondition()
+
+	// PID ファイルのチェックと、必要であれば作成
+	checkAndCreatePidFile()
 
 	app := (&cli.App{
 		Name:                   "clipboard-data-receiver",
@@ -72,6 +77,106 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+// PID ファイル処理(開始時)
+//
+// 1. キャッシュディレクトリ取得、なければ作成
+// 2. PID ファイル有無確認
+// 3. ファイルに記載されている PID に対応するプロセスの存在確認
+//   - 有れば何もせずプログラム終了
+//   - 無ければ PID ファイルを削除し、「3.」以降の処理を実行
+//
+// 4. PID ファイルに PID を記入してファイル作成
+// 本当は PID ファイルを消すようにするのがいいのだけど、
+// 「3.」でどのみちプロセスの生死確認をしないといけないので手抜きする。
+func checkAndCreatePidFile() {
+
+	// 1. キャッシュディレクトリ取得、なければ作成
+	pidFile, _, err := getProcessInfoFiles()
+	if err != nil {
+		panic(err)
+	}
+
+	// 2. PID ファイル有無確認
+	_, err = os.Stat(pidFile)
+	if err == nil {
+		// PID ファイルが存在する場合
+		// プロセスの有無確認処理を行う
+		fmt.Println("pid file found.")
+		pidFileContent, err := os.ReadFile(pidFile)
+		if err != nil {
+			panic(err)
+		}
+
+		// 3. ファイルに記載されている PID に対応するプロセスの存在確認
+
+		// 取得した PID を数値に変換
+		existedPid, err := strconv.Atoi(string(pidFileContent))
+		if err != nil {
+			panic(err)
+		}
+
+		// 数値に変換した PID を使ってプロセスの存在確認
+		fmt.Printf("Test running process PID: %d.\n", existedPid)
+		process, err := os.FindProcess(existedPid)
+		if err == nil {
+			isRunning, err := IsRunnnigProcess(process)
+			if err != nil {
+				// そもそもチェック処理で失敗
+				panic(err)
+			}
+
+			if isRunning {
+				// プロセス実行中
+				fmt.Println("clipboard-receiver already running.")
+				os.Exit(0)
+			} else {
+				// プロセスが実行中でない
+				fmt.Println("clipboard-receiver process not found.")
+				err = os.Remove(pidFile)
+				if err != nil {
+					panic(err)
+				}
+			}
+		} else {
+			// プロセスが存在していないなら PID ファイルを削除
+			fmt.Println("clipboard-receiver process not found.")
+			err = os.Remove(pidFile)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	// 4. PID ファイルに PID を記入してファイル作成
+	// (既存プロセスが存在する場合、ここまで来る前に Exit する)
+	// PID ファイルを作成
+	currentPid := os.Getpid()
+	fmt.Printf("Start with PID: %d.\n", currentPid)
+	err = os.WriteFile(pidFile, []byte(strconv.Itoa(currentPid)), 0600)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getProcessInfoFiles() (string, string, error) {
+	userCacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", "", err
+	}
+	appCacheDir := filepath.Join(userCacheDir, "clipboard-receiver")
+
+	// キャッシュディレクトリを作成
+	err = os.MkdirAll(appCacheDir, 744)
+	if err != nil {
+		return "", "", err
+	}
+
+	return filepath.Join(appCacheDir, "pid"),
+		filepath.Join(appCacheDir, "port"),
+		nil
+
 }
 
 func checkPrecondition() {
