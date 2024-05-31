@@ -205,6 +205,7 @@ func startListen(address, port string) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("Start listen: %s", address+":"+port)
 
 	// 接続を待ち受け、クライアントからの接続があったら
 	// 接続時処理(`handleConnection`)を開始
