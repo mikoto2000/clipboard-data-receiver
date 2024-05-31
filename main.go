@@ -20,6 +20,7 @@ const RECEIVE_BUFFER_SIZE = 1024
 const FLAG_NAME_ADDRESS = "address"
 const FLAG_NAME_PORT = "port"
 const FLAG_NAME_LICENSE = "license"
+const FLAG_NAME_RANDOM_PORT = "random-port"
 
 //go:embed LICENSE
 var license string
@@ -32,8 +33,14 @@ func main() {
 	// 事前条件チェック
 	checkPrecondition()
 
+	// キャッシュディレクトリ取得、なければ作成
+	pidFile, portFile, err := getProcessInfoFiles()
+	if err != nil {
+		panic(err)
+	}
+
 	// PID ファイルのチェックと、必要であれば作成
-	checkAndCreatePidFile()
+	checkAndCreatePidFile(pidFile)
 
 	app := (&cli.App{
 		Name:                   "clipboard-data-receiver",
@@ -59,6 +66,11 @@ func main() {
 				DisableDefaultText: true,
 				Usage:              "show licensesa.",
 			},
+			&cli.BoolFlag{
+				Name:  FLAG_NAME_RANDOM_PORT,
+				Value: false,
+				Usage: "use a random available port.",
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			if cCtx.Bool(FLAG_NAME_LICENSE) {
@@ -68,12 +80,20 @@ func main() {
 				return nil
 			}
 
-			startListen(cCtx.String(FLAG_NAME_ADDRESS), strconv.Itoa(cCtx.Int(FLAG_NAME_PORT)))
+			address := cCtx.String(FLAG_NAME_ADDRESS)
+			port := cCtx.Int(FLAG_NAME_PORT)
+
+			if cCtx.Bool(FLAG_NAME_RANDOM_PORT) {
+				port = getRandomPort()
+				savePortToCache(portFile, port)
+			}
+
+			startListen(address, strconv.Itoa(port))
 			return nil
 		},
 	})
 
-	err := app.Run(os.Args)
+	err = app.Run(os.Args)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -89,17 +109,10 @@ func main() {
 //
 // 4. PID ファイルに PID を記入してファイル作成
 // 本当は PID ファイルを消すようにするのがいいのだけど、
-// 「3.」でどのみちプロセスの生死確認をしないといけないので手抜きする。
-func checkAndCreatePidFile() {
-
-	// 1. キャッシュディレクトリ取得、なければ作成
-	pidFile, _, err := getProcessInfoFiles()
-	if err != nil {
-		panic(err)
-	}
-
-	// 2. PID ファイル有無確認
-	_, err = os.Stat(pidFile)
+// 「3.」でどのみちプロセスの生死確認をしないといけないので、
+// それに任せるようにする
+func checkAndCreatePidFile(pidFile string) {
+	_, err := os.Stat(pidFile)
 	if err == nil {
 		// PID ファイルが存在する場合
 		// プロセスの有無確認処理を行う
@@ -168,7 +181,7 @@ func getProcessInfoFiles() (string, string, error) {
 	appCacheDir := filepath.Join(userCacheDir, "clipboard-receiver")
 
 	// キャッシュディレクトリを作成
-	err = os.MkdirAll(appCacheDir, 744)
+	err = os.MkdirAll(appCacheDir, 0744)
 	if err != nil {
 		return "", "", err
 	}
@@ -176,7 +189,6 @@ func getProcessInfoFiles() (string, string, error) {
 	return filepath.Join(appCacheDir, "pid"),
 		filepath.Join(appCacheDir, "port"),
 		nil
-
 }
 
 func checkPrecondition() {
@@ -208,7 +220,6 @@ func startListen(address, port string) {
 }
 
 func handleConnection(conn net.Conn) {
-
 	// コネクションクローズ時処理を defer で定義
 	defer func() {
 		conn.Close()
@@ -236,4 +247,20 @@ func handleConnection(conn net.Conn) {
 func writeToClipboard(data []byte) {
 	// クリップボードへ貼り付け
 	clipboard.Write(clipboard.FmtText, data)
+}
+
+func getRandomPort() int {
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+	defer listener.Close()
+	return listener.Addr().(*net.TCPAddr).Port
+}
+
+func savePortToCache(portFile string, port int) {
+	err := os.WriteFile(portFile, []byte(strconv.Itoa(port)), 0644)
+	if err != nil {
+		panic(err)
+	}
 }
