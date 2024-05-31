@@ -134,7 +134,7 @@ func checkAndCreatePidFile(pidFile string) {
 		fmt.Printf("Test running process PID: %d.\n", existedPid)
 		process, err := os.FindProcess(existedPid)
 		if err == nil {
-			isRunning, err := IsRunnnigProcess(process)
+			isRunning, err := IsRunningProcess(process)
 			if err != nil {
 				// そもそもチェック処理で失敗
 				panic(err)

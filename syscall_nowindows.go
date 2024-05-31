@@ -7,7 +7,7 @@ import (
 	"syscall"
 )
 
-func IsRunnnigProcess(process *os.Process) (bool, error) {
+func IsRunningProcess(process *os.Process) (bool, error) {
 	err := process.Signal(syscall.Signal(0))
 	if err != nil {
 		if err == os.ErrProcessDone {

@@ -7,7 +7,7 @@ import (
 	"syscall"
 )
 
-func IsRunnnigProcess(process *os.Process) (bool, error) {
+func IsRunningProcess(process *os.Process) (bool, error) {
 	const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
 	handle, err := syscall.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(process.Pid))
