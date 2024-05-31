@@ -10,7 +10,7 @@ NAME:
    clipboard-data-receiver - Receive clipboard data from remote machine.
 
 USAGE:
-   clipboard-data-receiver [global options] 
+   clipboard-data-receiver [global options]
 
 VERSION:
    1.0.0
@@ -19,9 +19,20 @@ GLOBAL OPTIONS:
    --port value, -p value  listen port. (default: 8733)
    --address value         listen address. (default: "0.0.0.0")
    --license               show licensesa.
+   --random-port           use a random available port. (default: false)
    --help, -h              show help
    --version, -v           print the version
 ```
+
+`--random-port` フラグで使用するポートは、標準出力に出力するほか、
+以下ディレクトリ無いの `port` ファイルに記載される。
+
+| OS     | ディレクトリ                  |
+|--------|-------------------------------|
+| Windows| ~/AppData/Local/data-receiver |
+| Linux  | ~/.cache/data-receiver        |
+| Mac    | ?                             |
+
 
 # Example:
 
