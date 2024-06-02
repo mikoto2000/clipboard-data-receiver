@@ -13,6 +13,8 @@ import (
 	"golang.design/x/clipboard"
 )
 
+const APP_NAME = "clipboard-data-receiver"
+
 const DEFAULT_ADDRESS = "0.0.0.0"
 const DEFAULT_PORT = 8733
 const RECEIVE_BUFFER_SIZE = 1024
@@ -21,6 +23,8 @@ const FLAG_NAME_ADDRESS = "address"
 const FLAG_NAME_PORT = "port"
 const FLAG_NAME_LICENSE = "license"
 const FLAG_NAME_RANDOM_PORT = "random-port"
+const FLAG_NAME_PID_FILE = "pid-file"
+const FLAG_NAME_PORT_FILE = "port-file"
 
 //go:embed LICENSE
 var license string
@@ -33,14 +37,13 @@ func main() {
 	// 事前条件チェック
 	checkPrecondition()
 
-	// キャッシュディレクトリ取得、なければ作成
-	pidFile, portFile, err := getProcessInfoFiles()
+	userCacheDir, err := os.UserCacheDir()
 	if err != nil {
 		panic(err)
 	}
-
-	// PID ファイルのチェックと、必要であれば作成
-	checkAndCreatePidFile(pidFile)
+	appCacheDir := filepath.Join(userCacheDir, APP_NAME)
+	defaultPidFilePath := filepath.Join(appCacheDir, "pid")
+	defaultPortFilePath := filepath.Join(appCacheDir, "port")
 
 	app := (&cli.App{
 		Name:                   "clipboard-data-receiver",
@@ -71,8 +74,19 @@ func main() {
 				Value: false,
 				Usage: "use a random available port.",
 			},
+			&cli.StringFlag{
+				Name:  FLAG_NAME_PID_FILE,
+				Value: defaultPidFilePath,
+				Usage: "pid file path.",
+			},
+			&cli.StringFlag{
+				Name:  FLAG_NAME_PORT_FILE,
+				Value: defaultPortFilePath,
+				Usage: "port file path.",
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
+
 			if cCtx.Bool(FLAG_NAME_LICENSE) {
 				fmt.Println(license)
 				fmt.Println()
@@ -80,12 +94,27 @@ func main() {
 				return nil
 			}
 
+			pidFilePath := filepath.Dir(cCtx.String(FLAG_NAME_PID_FILE))
+			portFilePath := filepath.Dir(cCtx.String(FLAG_NAME_PORT_FILE))
+
+			// 各ファイルを格納するディレクトリを作成
+			err = os.MkdirAll(pidFilePath, 0744)
+			if err != nil {
+				panic(err)
+			}
+			err = os.MkdirAll(portFilePath, 0744)
+			if err != nil {
+				panic(err)
+			}
+
+			checkAndCreatePidFile(cCtx.String(FLAG_NAME_PID_FILE))
+
 			address := cCtx.String(FLAG_NAME_ADDRESS)
 			port := cCtx.Int(FLAG_NAME_PORT)
 
 			if cCtx.Bool(FLAG_NAME_RANDOM_PORT) {
 				port = getRandomPort()
-				savePortToCache(portFile, port)
+				savePortToCache(cCtx.String(FLAG_NAME_PORT_FILE), port)
 			}
 
 			startListen(address, strconv.Itoa(port))
