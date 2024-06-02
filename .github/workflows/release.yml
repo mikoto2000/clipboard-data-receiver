@@ -25,3 +25,4 @@ jobs:
         artifacts: build/*
         allowUpdates: true
         draft: true
+        omitBodyDuringUpdate: true
