@@ -26,6 +26,8 @@ const FLAG_NAME_RANDOM_PORT = "random-port"
 const FLAG_NAME_PID_FILE = "pid-file"
 const FLAG_NAME_PORT_FILE = "port-file"
 
+const OUTPUT_TEMPLATE = "{\n  \"pid\": %d,\n  \"address\": \"%s\",\n  \"port\": %d\n}\n"
+
 //go:embed LICENSE
 var license string
 
@@ -107,15 +109,25 @@ func main() {
 				panic(err)
 			}
 
-			checkAndCreatePidFile(cCtx.String(FLAG_NAME_PID_FILE))
+			alreadyRunning, pid, err := checkAndCreatePidFile(cCtx.String(FLAG_NAME_PID_FILE))
+			if err != nil {
+				panic(err)
+			}
 
 			address := cCtx.String(FLAG_NAME_ADDRESS)
 			port := cCtx.Int(FLAG_NAME_PORT)
+
+			if alreadyRunning {
+				fmt.Printf(OUTPUT_TEMPLATE, pid, address, port)
+				os.Exit(0)
+			}
 
 			if cCtx.Bool(FLAG_NAME_RANDOM_PORT) {
 				port = getRandomPort()
 				savePortToCache(cCtx.String(FLAG_NAME_PORT_FILE), port)
 			}
+
+			fmt.Printf(OUTPUT_TEMPLATE, pid, address, port)
 
 			startListen(address, strconv.Itoa(port))
 			return nil
@@ -140,15 +152,17 @@ func main() {
 // 本当は PID ファイルを消すようにするのがいいのだけど、
 // 「3.」でどのみちプロセスの生死確認をしないといけないので、
 // それに任せるようにする
-func checkAndCreatePidFile(pidFile string) {
+//
+// alreadyRunning, pid, error を返却する。
+func checkAndCreatePidFile(pidFile string) (bool, int, error) {
 	_, err := os.Stat(pidFile)
 	if err == nil {
 		// PID ファイルが存在する場合
 		// プロセスの有無確認処理を行う
-		fmt.Println("pid file found.")
+		fmt.Fprintln(os.Stderr, "pid file found.")
 		pidFileContent, err := os.ReadFile(pidFile)
 		if err != nil {
-			panic(err)
+			return false, 0, err
 		}
 
 		// 3. ファイルに記載されている PID に対応するプロセスの存在確認
@@ -156,37 +170,37 @@ func checkAndCreatePidFile(pidFile string) {
 		// 取得した PID を数値に変換
 		existedPid, err := strconv.Atoi(string(pidFileContent))
 		if err != nil {
-			panic(err)
+			return false, existedPid, err
 		}
 
 		// 数値に変換した PID を使ってプロセスの存在確認
-		fmt.Printf("Test running process PID: %d.\n", existedPid)
+		fmt.Fprintf(os.Stderr, "Test running process PID: %d.\n", existedPid)
 		process, err := os.FindProcess(existedPid)
 		if err == nil {
 			isRunning, err := IsRunningProcess(process)
 			if err != nil {
 				// そもそもチェック処理で失敗
-				panic(err)
+				return false, process.Pid, err
 			}
 
 			if isRunning {
 				// プロセス実行中
-				fmt.Println("clipboard-receiver already running.")
-				os.Exit(0)
+				fmt.Fprintln(os.Stderr, "clipboard-receiver already running.")
+				return true, process.Pid, nil
 			} else {
 				// プロセスが実行中でない
-				fmt.Println("clipboard-receiver process not found.")
+				fmt.Fprintln(os.Stderr, "clipboard-receiver process not found.")
 				err = os.Remove(pidFile)
 				if err != nil {
-					panic(err)
+					return false, process.Pid, err
 				}
 			}
 		} else {
 			// プロセスが存在していないなら PID ファイルを削除
-			fmt.Println("clipboard-receiver process not found.")
+			fmt.Fprintln(os.Stderr, "clipboard-receiver process not found.")
 			err = os.Remove(pidFile)
 			if err != nil {
-				panic(err)
+				return false, 0, err
 			}
 		}
 	}
@@ -200,6 +214,8 @@ func checkAndCreatePidFile(pidFile string) {
 	if err != nil {
 		panic(err)
 	}
+
+	return false, currentPid, nil
 }
 
 func getProcessInfoFiles() (string, string, error) {
