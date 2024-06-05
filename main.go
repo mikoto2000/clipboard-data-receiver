@@ -209,7 +209,7 @@ func checkAndCreatePidFile(pidFile string) (bool, int, error) {
 	// (既存プロセスが存在する場合、ここまで来る前に Exit する)
 	// PID ファイルを作成
 	currentPid := os.Getpid()
-	fmt.Printf("Start with PID: %d.\n", currentPid)
+	fmt.Fprintf(os.Stderr, "Start with PID: %d.\n", currentPid)
 	err = os.WriteFile(pidFile, []byte(strconv.Itoa(currentPid)), 0600)
 	if err != nil {
 		panic(err)
@@ -250,7 +250,7 @@ func startListen(address, port string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Start listen: %s", address+":"+port)
+	fmt.Fprintf(os.Stderr, "Start listen: %s", address+":"+port)
 
 	// 接続を待ち受け、クライアントからの接続があったら
 	// 接続時処理(`handleConnection`)を開始
