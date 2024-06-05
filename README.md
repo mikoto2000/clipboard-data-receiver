@@ -13,7 +13,7 @@ USAGE:
    clipboard-data-receiver [global options]
 
 VERSION:
-   2.1.0
+   3.0.0
 
 GLOBAL OPTIONS:
    --port value, -p value  listen port. (default: 8733)
