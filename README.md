@@ -29,6 +29,16 @@ GLOBAL OPTIONS:
 `--random-port` フラグで使用するポートは、標準出力に出力するほか、
 `--pid-file`, `--port-file` で指定したファイルに記載される。
 
+PID, 待ち受けアドレス、待ち受けポートは、 JSON 形式で標準出力へ出力される。
+
+```json
+{
+  "pid": 4944,
+  "address": "0.0.0.0",
+  "port": 8733
+}
+```
+
 
 # Example:
 
