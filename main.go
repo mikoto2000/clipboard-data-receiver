@@ -52,7 +52,7 @@ func main() {
 	app := (&cli.App{
 		Name:                   "clipboard-data-receiver",
 		Usage:                  "Receive clipboard data from remote machine.",
-		Version:                "3.0.0",
+		Version:                "3.1.0",
 		UseShortOptionHandling: true,
 		HideHelpCommand:        true,
 		Flags: []cli.Flag{
