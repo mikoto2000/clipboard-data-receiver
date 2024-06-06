@@ -96,20 +96,23 @@ func main() {
 				return nil
 			}
 
-			pidFilePath := filepath.Dir(cCtx.String(FLAG_NAME_PID_FILE))
-			portFilePath := filepath.Dir(cCtx.String(FLAG_NAME_PORT_FILE))
+			pidFile := cCtx.String(FLAG_NAME_PID_FILE)
+			portFile := cCtx.String(FLAG_NAME_PORT_FILE)
+
+			pidFileDir := filepath.Dir(pidFile)
+			portFileDir := filepath.Dir(portFile)
 
 			// 各ファイルを格納するディレクトリを作成
-			err = os.MkdirAll(pidFilePath, 0744)
+			err = os.MkdirAll(pidFileDir, 0744)
 			if err != nil {
 				panic(err)
 			}
-			err = os.MkdirAll(portFilePath, 0744)
+			err = os.MkdirAll(portFileDir, 0744)
 			if err != nil {
 				panic(err)
 			}
 
-			alreadyRunning, pid, err := checkAndCreatePidFile(cCtx.String(FLAG_NAME_PID_FILE))
+			alreadyRunning, pid, err := checkAndCreatePidFile(pidFile)
 			if err != nil {
 				panic(err)
 			}
@@ -118,13 +121,18 @@ func main() {
 			port := cCtx.Int(FLAG_NAME_PORT)
 
 			if alreadyRunning {
+				// port ファイルからポート番号を取得
+				port, err = getPort(portFile)
+				if err != nil {
+					panic(err)
+				}
 				fmt.Printf(OUTPUT_TEMPLATE, pid, address, port)
 				os.Exit(0)
 			}
 
 			if cCtx.Bool(FLAG_NAME_RANDOM_PORT) {
 				port = getRandomPort()
-				savePortToCache(cCtx.String(FLAG_NAME_PORT_FILE), port)
+				savePortToCache(portFile, port)
 			}
 
 			fmt.Printf(OUTPUT_TEMPLATE, pid, address, port)
@@ -138,6 +146,24 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+// ポートファイルからポート番号を取得する
+func getPort(portFilePath string) (int, error) {
+
+	// port ファイルからポート番号を取得
+	portFileContent, err := os.ReadFile(portFilePath)
+	if err != nil {
+		return 0, err
+	}
+
+	// 取得した内容を int に変換
+	port, err := strconv.Atoi(string(portFileContent))
+	if err != nil {
+		return 0, err
+	}
+
+	return port, nil
 }
 
 // PID ファイル処理(開始時)
