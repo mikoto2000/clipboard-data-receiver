@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 
 	"github.com/urfave/cli/v2"
 	"golang.design/x/clipboard"
@@ -136,6 +138,25 @@ func main() {
 			}
 
 			fmt.Printf(OUTPUT_TEMPLATE, pid, address, port)
+
+			// Ctrl+C で終了させても PID ファイル、 ポートファイルが削除されるように、
+			// シグナルをキャッチする
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+			go func() {
+				_ = <-sigs
+
+				err = os.Remove(pidFile)
+				if err != nil {
+					panic(err)
+				}
+				err = os.RemoveAll(portFile)
+				if err != nil {
+					panic(err)
+				}
+
+				os.Exit(0)
+			}()
 
 			startListen(address, strconv.Itoa(port))
 			return nil
